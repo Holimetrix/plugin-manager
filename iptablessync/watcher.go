@@ -92,6 +92,7 @@ func (iptw *IPTablesWatcher) createChains() error {
 	buf.WriteString("\nCOMMIT\n")
 
 	buf.WriteString("*filter\n")
+	buf.WriteString(":CATTLE_CUSTOM_PREPOLICIES -\n")
 	buf.WriteString(":CATTLE_NETWORK_POLICY -\n")
 	buf.WriteString(":CATTLE_FORWARD -\n")
 	buf.WriteString("\nCOMMIT\n")
@@ -216,6 +217,17 @@ func (iptw *IPTablesWatcher) checkAndHookChains() error {
 		log.Errorf("iptablessync: err=%v", err)
 	}
 
+	if err = checkOneHookRule(hookRule{
+		table:    "filter",
+		chain:    "FORWARD",
+		dstChain: "CATTLE_CUSTOM_PREPOLICIES",
+		spec:     "-j CATTLE_CUSTOM_PREPOLICIES",
+		num:      "1",
+	}); err != nil {
+		hasErrored = true
+		log.Errorf("iptablessync: err=%v", err)
+	}
+
 	bridgeSubnet, err := iptw.getBridgeSubnet()
 	if err != nil {
 		hasErrored = true
@@ -227,7 +239,7 @@ func (iptw *IPTablesWatcher) checkAndHookChains() error {
 			chain:    "FORWARD",
 			dstChain: "CATTLE_NETWORK_POLICY",
 			spec:     fmt.Sprintf("-s %v -d %v -j CATTLE_NETWORK_POLICY", bridgeSubnet, bridgeSubnet),
-			num:      "1",
+			num:      "2",
 		}); err != nil {
 			hasErrored = true
 			log.Errorf("iptablessync: err=%v", err)
@@ -239,7 +251,7 @@ func (iptw *IPTablesWatcher) checkAndHookChains() error {
 		chain:    "FORWARD",
 		dstChain: "CATTLE_FORWARD",
 		spec:     "-j CATTLE_FORWARD",
-		num:      "2",
+		num:      "3",
 	}); err != nil {
 		hasErrored = true
 		log.Errorf("iptablessync: err=%v", err)
